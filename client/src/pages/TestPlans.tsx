@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import CreateTestPlanModal from '../components/CreateTestPlanModal.tsx';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { handleApiError } from '../utils/errorHandler.ts';
 
 interface TestPlan {
-  id: number;
+  id: string;
   name: string;
   description?: string;
   status: string;
@@ -46,7 +48,7 @@ const TestPlans: React.FC = () => {
     setTestPlans(testPlans.map(plan => plan.id === updatedPlan.id ? updatedPlan : plan));
   };
 
-  const handleDeleteTestPlan = async (id: number) => {
+  const handleDeleteTestPlan = async (id: string) => {
     if (!window.confirm('Вы уверены, что хотите удалить этот тест-план?')) {
       return;
     }
@@ -59,12 +61,12 @@ const TestPlans: React.FC = () => {
       if (response.ok) {
         setTestPlans(testPlans.filter(plan => plan.id !== id));
       } else {
-        const error = await response.json();
-        alert(error.error || 'Ошибка удаления тест-плана');
+        const errorMessage = await handleApiError(response);
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error('Ошибка удаления тест-плана:', error);
-      alert('Ошибка удаления тест-плана');
+      toast.error('Ошибка удаления тест-плана');
     }
   };
 

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import { handleApiError } from '../utils/errorHandler.ts';
 
 interface Project {
-  id: number;
+  id: string;
   name: string;
   description?: string;
 }
@@ -71,7 +73,7 @@ const CreateTestPlanModal: React.FC<CreateTestPlanModalProps> = ({
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            projectId: parseInt(formData.projectId),
+            projectId: formData.projectId,
             name: formData.name,
             description: formData.description,
             status: formData.status
@@ -82,7 +84,7 @@ const CreateTestPlanModal: React.FC<CreateTestPlanModalProps> = ({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            projectId: parseInt(formData.projectId),
+            projectId: formData.projectId,
             name: formData.name,
             description: formData.description,
             status: formData.status
@@ -98,12 +100,12 @@ const CreateTestPlanModal: React.FC<CreateTestPlanModalProps> = ({
         }
         onClose();
       } else {
-        const error = await response.json();
-        alert(error.error || (editMode ? 'Ошибка обновления тест-плана' : 'Ошибка создания тест-плана'));
+        const errorMessage = await handleApiError(response);
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error(editMode ? 'Ошибка обновления тест-плана:' : 'Ошибка создания тест-плана:', error);
-      alert(editMode ? 'Ошибка обновления тест-плана' : 'Ошибка создания тест-плана');
+      toast.error(editMode ? 'Ошибка обновления тест-плана' : 'Ошибка создания тест-плана');
     }
   };
 

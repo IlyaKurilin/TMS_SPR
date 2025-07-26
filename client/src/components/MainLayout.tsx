@@ -12,6 +12,7 @@ import {
   Menu,
 } from 'lucide-react';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
+import { handleApiError } from '../utils/errorHandler.ts';
 
 const Layout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -50,13 +51,24 @@ const Layout: React.FC = () => {
     if (show && importBtnRef.current) {
       const rect = importBtnRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
-      setTooltipPos(spaceBelow < 120 ? 'top' : 'bottom');
+      const spaceAbove = rect.top;
+      const tooltipHeight = 140; // Увеличиваем высоту для учета текста
+      
+      // Проверяем, есть ли место снизу
+      if (spaceBelow >= tooltipHeight) {
+        setTooltipPos('bottom');
+      } else if (spaceAbove >= tooltipHeight) {
+        setTooltipPos('top');
+      } else {
+        // Если места нет ни сверху, ни снизу, показываем снизу с ограничением
+        setTooltipPos('bottom');
+      }
     }
     setShowTooltip(show);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Мобильный hamburger */}
       <button
         className="fixed top-4 left-4 z-50 md:hidden bg-white rounded-full p-2 shadow"
@@ -68,7 +80,7 @@ const Layout: React.FC = () => {
 
       {/* Sidebar */}
       {/* Desktop */}
-      <div className="hidden md:fixed md:inset-y-0 md:left-0 md:z-50 md:w-64 md:block sidebar">
+      <div className="hidden md:fixed md:inset-y-0 md:left-0 md:z-50 md:w-64 md:block sidebar bg-white border-r border-gray-200 h-full overflow-y-auto">
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-center h-16 px-4 border-b border-gray-200">
@@ -142,32 +154,13 @@ const Layout: React.FC = () => {
                 <FileText className="w-4 h-4 mr-2" />
                 {dumpLoading ? 'Скачивание...' : 'Скачать дамп БД'}
               </button>
-              <button
-                ref={importBtnRef}
-                onClick={() => setImportModalOpen(true)}
-                className="flex items-center w-full px-3 py-2 text-sm font-medium text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200"
-                onMouseEnter={() => handleTooltip(true)}
-                onMouseLeave={() => handleTooltip(false)}
-                onFocus={() => handleTooltip(true)}
-                onBlur={() => handleTooltip(false)}
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                Импортировать дамп
-                <span className="relative group ml-2">
-                  <InformationCircleIcon className="w-4 h-4 text-green-600 cursor-pointer" />
-                  {showTooltip && (
-                    <div
-                      ref={tooltipRef}
-                      className={`absolute left-1/2 z-50 w-72 bg-white border border-gray-300 rounded-lg shadow-lg p-3 text-xs text-gray-800 transition-opacity duration-200 ${tooltipPos === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'}`}
-                      style={{ transform: 'translateX(-50%)' }}
-                    >
-                      <b>Зачем это нужно?</b><br/>
-                      Импорт дампа полностью заменяет вашу локальную базу на версию из файла. Это нужно, чтобы синхронизировать данные с командой или восстановить актуальное состояние.<br/><br/>
-                      <b>Внимание:</b> все локальные изменения будут потеряны!
-                    </div>
-                  )}
-                </span>
-              </button>
+                              <button
+                  onClick={() => setImportModalOpen(true)}
+                  className="flex items-center w-full px-3 py-2 text-sm font-medium text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Импортировать дамп
+                </button>
             </div>
             {toast && (
               <div className="fixed bottom-4 left-4 z-50 bg-gray-900 text-white px-4 py-2 rounded shadow-lg animate-fade-in">
@@ -205,8 +198,8 @@ const Layout: React.FC = () => {
                         setImportModalOpen(false);
                         window.location.reload();
                       } else {
-                        const err = await res.json().catch(() => ({}));
-                        setToast('Ошибка при импорте дампа: ' + (err.details || err.error || 'Неизвестная ошибка'));
+                        const errorMessage = await handleApiError(res);
+                        setToast('Ошибка при импорте дампа: ' + errorMessage);
                       }
                       setImportLoading(false);
                       if (fileInput) fileInput.value = '';
@@ -323,10 +316,12 @@ const Layout: React.FC = () => {
                   Импортировать дамп
                   <span className="relative group ml-2">
                     <InformationCircleIcon className="w-4 h-4 text-green-600 cursor-pointer" />
-                    <span className="absolute left-1/2 -translate-x-1/2 mt-2 w-72 bg-white border border-gray-300 rounded-lg shadow-lg p-3 text-xs text-gray-800 z-50 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200">
-                      <b>Зачем это нужно?</b><br/>
-                      Импорт дампа полностью заменяет вашу локальную базу на версию из файла. Это нужно, чтобы синхронизировать данные с командой или восстановить актуальное состояние.<br/><br/>
-                      <b>Внимание:</b> все локальные изменения будут потеряны!
+                    <span className="absolute left-1/2 -translate-x-1/2 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-xs text-gray-800 z-50 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200">
+                      <div className="break-words whitespace-pre-line">
+                        <b>Зачем это нужно?</b><br/>
+                        Импорт дампа полностью заменяет вашу локальную базу на версию из файла. Это нужно, чтобы синхронизировать данные с командой или восстановить актуальное состояние.<br/><br/>
+                        <b>Внимание:</b> все локальные изменения будут потеряны!
+                      </div>
                     </span>
                   </span>
                 </button>
@@ -367,8 +362,8 @@ const Layout: React.FC = () => {
                           setImportModalOpen(false);
                           window.location.reload();
                         } else {
-                          const err = await res.json().catch(() => ({}));
-                          setToast('Ошибка при импорте дампа: ' + (err.details || err.error || 'Неизвестная ошибка'));
+                          const errorMessage = await handleApiError(res);
+                          setToast('Ошибка при импорте дампа: ' + errorMessage);
                         }
                         setImportLoading(false);
                         if (fileInput) fileInput.value = '';
@@ -401,8 +396,8 @@ const Layout: React.FC = () => {
         </>
       )}
       {/* Main content */}
-      <div className="md:pl-64 pl-0 transition-all">
-        <main className="p-2 sm:p-4 md:p-6">
+      <div className="flex-1 md:pl-64 pl-0 transition-all min-w-0">
+        <main className="p-2 sm:p-4 md:p-6 max-w-full w-full mx-auto min-h-[calc(100vh-64px)] overflow-x-auto">
           <Outlet />
         </main>
       </div>
